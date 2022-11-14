@@ -10,6 +10,7 @@
 Loid bersama Franky berencana membuat peta tersebut dengan kriteria WISE sebagai DNS Server, Westalis sebagai DHCP Server, Berlint sebagai Proxy Server (1), dan Ostania sebagai DHCP Relay (2)
 
 Membuat topologi sebagai berikut
+![1!](img/messageImage_1668436537655.jpg)
 
 Lalu melakukan setting pada masing masing node pada `network configuration`
 - Ostania
