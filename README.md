@@ -67,7 +67,7 @@ Kemudian pada Ostania melakukan seperti berikut
     iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE -s 192.172.0.0/16
     apt-get install isc-dhcp-relay -y
       
-Llau edit konfigurasi pada `/etc/default/isc-dhcp-relay`
+Lalu edit konfigurasi pada `/etc/default/isc-dhcp-relay`
 
     echo "
     # What servers should the DHCP relay forward requests to?
@@ -86,12 +86,73 @@ Llau edit konfigurasi pada `/etc/default/isc-dhcp-relay`
 Semua client yang ada HARUS menggunakan konfigurasi IP dari DHCP Server.
 Client yang melalui Switch1 mendapatkan range IP dari 192.172.1.50 - 192.172.1.88 dan 192.172.1.120 - 192.172.1.155
 
+Pada Westalis sama seperti sebelumnya kita perlu melakukan hal seperti berikut
+
+    apt-get update
+    apt-get install isc-dhcp-relay -y
+    echo 'INTERFACES="eth0"' > /etc/default/isc-dhcp-server
+    service isc-dhcp-server restart
+    
+Kemudian melakukan set ip seperti yang diminta, yaitu seperti berikut
+
+      echo "
+      subnet 192.172.2.0 netmask 255.255.255.0 {
+      }
+      subnet 192.172.1.0 netmask 255.255.255.0 {
+          range 192.172.1.50 192.172.1.88;
+          range 192.172.1.120 192.172.1.155;
+          option routers 192.172.1.1;
+          option broadcast-address 192.172.1.255;
+          option domain-name-servers 192.172.2.2;
+          default-lease-time 300;
+          max-lease-time 6900;
+
+      }" > /etc/dhcp/dhcpd.conf
+
 ## Nomor 4
 Client yang melalui Switch3 mendapatkan range IP dari 192.172.3.10 - 192.172.3.30 dan 192.172.3.60 - 192.172.3.85
+
+Sama seperti pada nomor 3 lakukan seperti berikut
+
+      echo "
+      subnet 192.172.3.0 netmask 255.255.255.0 {
+          range 192.172.3.10 192.172.3.30;
+          range 192.172.3.60 192.172.3.85;
+          option routers 192.172.3.1;
+          option broadcast-address 192.172.3.255;
+          option domain-name-servers 192.172.2.2;
+          default-lease-time 300;
+          max-lease-time 6900;
+
+      }" >> /etc/dhcp/dhcpd.conf
 
 ## Nomor 5
 Client mendapatkan DNS dari WISE dan client dapat terhubung dengan internet melalui DNS tersebut
 
+Sebelum melakukan konfigurasi pada `WISE` kita perlu melakukan hal berikut terlebih dahulu
+      
+      echo "nameserver 192.168.122.1" > /etc/resolv.conf
+      apt-get update
+      apt-get install bind9 -y
+      service bind9 start
+            
+Kemudian pada `WISE` kita melakukan konfigurasi sebagai berikut
+      
+      echo "
+      options {
+            directory \"/var/cache/bind\";
+            
+            forwarders {
+                0.0.0.0;
+                0.0.0.4;
+            };
+            allow-query { any; };
+            auth-nxdomain no;    # conform to RFC135
+            listen-on-v6 { any; };
+      };
+      " > /etc/bind/named.conf.options
+      service bind9 restart
+            
 ## Nomor 6
 Lama waktu DHCP server meminjamkan alamat IP kepada Client yang melalui Switch1 selama 5 menit sedangkan pada client yang melalui Switch3 selama 10 menit. Dengan waktu maksimal yang dialokasikan untuk peminjaman alamat IP selama 115 menit.
 
