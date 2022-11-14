@@ -9,6 +9,79 @@
 ## Nomor 1 dan 2
 Loid bersama Franky berencana membuat peta tersebut dengan kriteria WISE sebagai DNS Server, Westalis sebagai DHCP Server, Berlint sebagai Proxy Server (1), dan Ostania sebagai DHCP Relay (2)
 
+Membuat topologi sebagai berikut
+
+Lalu melakukan setting pada masing masing node pada `network configuration`
+- Ostania
+
+      auto eth0
+      iface eth0 inet dhcp
+
+      auto eth1
+      iface eth1 inet static
+        address 192.172.1.1
+        netmask 255.255.255.0
+
+      auto eth2
+      iface eth2 inet static
+        address 192.172.2.1
+        netmask 255.255.255.0
+
+      auto eth3
+      iface eth3 inet static
+        address 192.172.3.1
+        netmask 255.255.255.0
+        
+- WISE
+
+      auto eth0
+      iface eth0 inet static
+        address 192.172.2.2
+        netmask 255.255.255.0
+        gateway 192.172.2.1
+        
+- Westalis
+      
+      auto eth0
+      iface eth0 inet static
+        address 192.172.2.4
+        netmask 255.255.255.0
+        gateway 192.172.2.1
+        
+- Berlint
+
+      auto eth0
+      iface eth0 inet static
+        address 192.172.2.3
+        netmask 255.255.255.0
+        gateway 192.172.2.1
+        
+- SSS/Garden/Eden/NewstonCastle/KemonoPark
+  
+      auto eth0
+      iface eth0 inet dhcp
+      
+Kemudian pada Ostania melakukan seperti berikut
+
+    apt-get update
+    iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE -s 192.172.0.0/16
+    apt-get install isc-dhcp-relay -y
+      
+Llau edit konfigurasi pada `/etc/default/isc-dhcp-relay`
+
+    echo "
+    # What servers should the DHCP relay forward requests to?
+    SERVERS=\"192.172.2.4\"
+
+    # On what interfaces should the DHCP relay (dhrelay) serve DHCP requests?
+    INTERFACES=\"eth1 eth3 eth2\"
+
+    # Additional options that are passed to the DHCP relay daemon?
+    OPTIONS=\"\"
+    " > /etc/default/isc-dhcp-relay
+    service isc-dhcp-relay restart
+
+      
 ## Nomor 3
 Semua client yang ada HARUS menggunakan konfigurasi IP dari DHCP Server.
 Client yang melalui Switch1 mendapatkan range IP dari 192.172.1.50 - 192.172.1.88 dan 192.172.1.120 - 192.172.1.155
