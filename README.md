@@ -143,9 +143,10 @@ Kemudian pada `WISE` kita melakukan konfigurasi sebagai berikut
             directory \"/var/cache/bind\";
             
             forwarders {
-                0.0.0.0;
-                0.0.0.4;
+                  192.168.122.1;
             };
+            
+            // dnssec-validation auto;
             allow-query { any; };
             auth-nxdomain no;    # conform to RFC135
             listen-on-v6 { any; };
