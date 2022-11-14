@@ -11,8 +11,6 @@ Loid bersama Franky berencana membuat peta tersebut dengan kriteria WISE sebagai
 
 Membuat topologi sebagai berikut
 
-![1!](img/messageImage_1668436537655.jpg)
-
 Lalu melakukan setting pada masing masing node pada `network configuration`
 - Ostania
 
@@ -106,8 +104,6 @@ Kemudian melakukan set ip seperti yang diminta, yaitu seperti berikut
           option routers 192.172.1.1;
           option broadcast-address 192.172.1.255;
           option domain-name-servers 192.172.2.2;
-          default-lease-time 300;
-          max-lease-time 6900;
 
       }" > /etc/dhcp/dhcpd.conf
 
@@ -159,11 +155,43 @@ Kemudian pada `WISE` kita melakukan konfigurasi sebagai berikut
 ## Nomor 6
 Lama waktu DHCP server meminjamkan alamat IP kepada Client yang melalui Switch1 selama 5 menit sedangkan pada client yang melalui Switch3 selama 10 menit. Dengan waktu maksimal yang dialokasikan untuk peminjaman alamat IP selama 115 menit.
 
+Pada `Westalis` dilakukan script sebagai berikut
+
+      echo "
+      subnet 192.172.2.0 netmask 255.255.255.0 {
+      }
+      subnet 192.172.1.0 netmask 255.255.255.0 {
+          ...
+          default-lease-time 300;
+          max-lease-time 6900;
+
+      }" > /etc/dhcp/dhcpd.conf
+      
+      echo "
+      subnet 192.172.3.0 netmask 255.255.255.0 {
+          ...
+          default-lease-time 300;
+          max-lease-time 6900;
+
+      }" >> /etc/dhcp/dhcpd.conf
+
+
 ## Nomor 7
 Loid dan Franky berencana menjadikan Eden sebagai server untuk pertukaran informasi dengan alamat IP yang tetap dengan IP 192.172.3.13
 
-## Nomor 8
-SSS, Garden, dan Eden digunakan sebagai client Proxy agar pertukaran informasi dapat terjamin keamanannya, juga untuk mencegah kebocoran data.
+Menambahakan konfigurasi berikut pada `Westalis`
+      
+      echo"
+      host Eden {
+            hardware ethernet 22:e5:4a:ff:62:41;
+            fixed-address 192.172.3.13;
+      }" >> /etc/dhcp/dhcpd.conf
+      
+Dan pada interface `WISE` sebagau berikut
+
+      auto eth0
+      iface eth0 inet dhcp
+      hwaddress ether 22:e5:4a:ff:62:41
 
 ## Note
 Pada Proxy Server di Berlint, Loid berencana untuk mengatur bagaimana Client dapat mengakses internet. Artinya setiap client harus menggunakan Berlint sebagai HTTP & HTTPS proxy. Adapun kriteria pengaturannya adalah sebagai berikut:
@@ -172,3 +200,89 @@ Pada Proxy Server di Berlint, Loid berencana untuk mengatur bagaimana Client dap
 3. Saat akses internet dibuka, client dilarang untuk mengakses web tanpa HTTPS. (Contoh web HTTP: http://example.com)
 4. Agar menghemat penggunaan, akses internet dibatasi dengan kecepatan maksimum 128 Kbps pada setiap host (Kbps = kilobit per second; lakukan pengecekan pada tiap host, ketika 2 host akses internet pada saat bersamaan, keduanya mendapatkan speed maksimal yaitu 128 Kbps)
 5. Setelah diterapkan, ternyata peraturan nomor (4) mengganggu produktifitas saat hari kerja, dengan demikian pembatasan kecepatan hanya diberlakukan untuk pengaksesan internet pada hari libur
+
+Untuk memenuhi kriteria kriteria diatas dilakukan konfigurasi sebagai berikut:
+Pada `Berlint`
+
+      echo"
+      acl AVAILABLE_WORKING time MTWHF 08:00-17:00
+      acl WORKING_SITES dstdomain "/etc/squid/access.acl"
+      acl WEEKEND time AS 00:00-23:59
+      acl ssl_ports port 443
+      acl unsafe_port port 80
+
+      delay_pools 1
+      delay_class 1 1
+      delay_access 1 allow WEEKEND
+      delay_access 1 deny all
+      delay_parameters 1 16000/16000
+
+      http_port 8080
+      visible_hostname Berlint
+
+      http_access allow all
+      http_access allow ssl_ports !WORKING_SITES !AVAILABLE_WORKING
+      http_access allow WORKING_SITES AVAILABLE_WORKING
+      http_access deny all" >> /etc/squid/squid.conf
+      
+      echo"
+      loid-work.com
+      franky-work.com
+      " >> /etc/squid/access.acl
+      
+Setelah dilakukan konfigurasi diatas dilakukan restart pada squid dengan `service squid restart`
+      
+Pada `WISE`
+ 
+      echo"
+      zone "loid-work.com" {
+            type master;
+            file "/etc/bind/jarkom3/loid-work.com";
+            allow-transfer {192.172.3.13;};
+      };
+
+      zone "franky-work.com" {
+            type master;
+            file "/etc/bind/jarkom3/franky-work.com";
+            allow-transfer {192.172.3.13;};
+      };" >> /etc/bind/named.conf.local
+      
+      echo"
+      ;
+      ; BIND data file for local loopback interface
+      ;
+      $TTL    604800
+      @       IN      SOA     loid-work.com. root.loid-work.com. (
+                              2022111401      ; Serial
+                               604800         ; Refresh
+                                86400         ; Retry
+                              2419200         ; Expire
+                               604800 )       ; Negative Cache TTL
+      ;
+      @       IN      NS      loid-work.com.
+      @       IN      A       192.172.2.2
+      @     IN      AAAA   ::1
+      ">>/etc/bind/jarkom3/loid-work.com
+      
+      echo"
+      ;
+      ; BIND data file for local loopback interface
+      ;
+      $TTL    604800
+      @       IN      SOA     franky-work.com. root.franky-work.com. (
+                              20221111401      ; Serial
+                               604800         ; Refresh
+                                86400         ; Retry
+                              2419200         ; Expire
+                               604800 )       ; Negative Cache TTL
+      ;
+      @       IN      NS      franky-work.com.
+      @       IN      A       192.172.2.2
+      @     IN      AAAA   ::1
+      ">>/etc/bind/jarkom3/franky-work.com
+
+Setelah dilakukan konfigurasi diatas dilakukan restart pada bind dengan `service bind9 restart`
+ 
+      
+      
+      
