@@ -11,6 +11,8 @@ Loid bersama Franky berencana membuat peta tersebut dengan kriteria WISE sebagai
 
 Membuat topologi sebagai berikut
 
+![1!](img/messageImage_1668436537655.jpg)
+
 Lalu melakukan setting pada masing masing node pada `network configuration`
 - Ostania
 
